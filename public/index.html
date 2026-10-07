@@ -1,0 +1,1438 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Astro Migration Playbook</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout concept: a field manual. Sticky phase index on the left, one phase per block,
+   checklists as tear-off cards, "if you skip it" columns flagged in amber. Light only, by request. */
+:root {
+  --bg: #F4F7F6;
+  --surface: #FFFFFF;
+  --ink: #10201C;
+  --muted: #4F605B;
+  --line: #D7E0DC;
+  --accent: #0A5E69;
+  --accent-soft: #E1F0F1;
+  --warn: #7A4300;
+  --warn-soft: #FFF2DC;
+  --ok: #17663A;
+  --ok-soft: #E3F4E9;
+  --f-display: "Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 76px; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 16px; line-height: 1.65; margin: 0; }
+a { color: var(--accent); }
+code { font-family: var(--f-mono); font-size: .86em; background: #E8EFEC; padding: .1em .35em; border-radius: 4px; overflow-wrap: anywhere; }
+
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: rgba(244,247,246,.94); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); }
+.bar-in { max-width: 1240px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; gap: 14px; }
+.bar b { font-family: var(--f-display); font-size: 15px; white-space: nowrap; }
+.meter { flex: 1; height: 8px; background: #DCE5E1; border-radius: 99px; overflow: hidden; min-width: 40px; }
+.meter i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .25s; }
+.count { font-family: var(--f-mono); font-size: 12.5px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.reset { font: 500 12.5px var(--f-body); background: transparent; border: 1px solid var(--line); color: var(--muted); border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+.reset:hover { border-color: var(--accent); color: var(--accent); }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+.hero { max-width: 1240px; margin: 0 auto; padding: 56px 16px 28px; }
+.kicker { font-family: var(--f-mono); font-size: 12.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--accent); }
+.hero h1 { font-family: var(--f-display); font-weight: 800; font-size: clamp(34px, 6vw, 68px); line-height: 1.02; letter-spacing: -.02em; margin: 14px 0 22px; max-width: 20ch; text-wrap: balance; }
+.sub { font-size: clamp(17px,2.2vw,22px); color: var(--muted); margin: -8px 0 20px; max-width: 48ch; }
+.howto { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 26px; }
+.howto span { font-size: 13px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; background: #fff; }
+.howto b { font-family: var(--f-mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); margin-right: 8px; }
+.pick { font-family: var(--f-display); font-size: 20px; margin: 0 0 12px; }
+.paths { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; }
+.path { border: 1px solid var(--line); border-top: 4px solid var(--accent); border-radius: 8px; padding: 14px 16px; background: #fff; }
+.path.warn { border-top-color: #B8741A; }
+.path b { font-family: var(--f-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+.path h3 { font-family: var(--f-display); font-size: 17px; margin: 6px 0; }
+.path p { font-size: 14px; margin: 0 0 8px; }
+.path small { font-family: var(--f-mono); font-size: 11.5px; color: var(--muted); }
+@media (max-width: 760px) { .paths { grid-template-columns: 1fr; } }
+.lede { max-width: 66ch; font-size: 18px; color: var(--ink); }
+.lede p { margin: 0 0 12px; }
+.facts { display: flex; flex-wrap: wrap; gap: 10px 28px; margin: 26px 0 0; padding: 16px 0 0; border-top: 2px solid var(--ink); }
+.facts div { display: flex; flex-direction: column; }
+.facts b { font-family: var(--f-display); font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums; }
+.facts span { font-size: 13px; color: var(--muted); }
+
+.shell { max-width: 1240px; margin: 0 auto; padding: 8px 16px 80px; display: grid; grid-template-columns: 232px minmax(0, 1fr); gap: 40px; }
+.index { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 64px); align-self: start; max-height: calc(100vh - 90px); overflow-y: auto; padding-right: 6px; }
+.index a { display: block; text-decoration: none; color: var(--muted); padding: 7px 10px; border-left: 3px solid var(--line); font-size: 13.5px; line-height: 1.35; }
+.index a .nk { display: block; font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; }
+.index a:hover { color: var(--ink); background: #E9F0ED; }
+.index a.on { color: var(--accent); border-left-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+.jump { display: none; }
+
+main { min-width: 0; max-width: 860px; }
+.block { padding: 8px 0 34px; }
+.phase { border-top: 2px solid var(--ink); padding-top: 22px; margin-top: 18px; }
+.phead { margin-bottom: 14px; }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; letter-spacing: .09em; text-transform: uppercase; color: var(--accent); }
+.phead h2 { font-family: var(--f-display); font-weight: 800; font-size: clamp(26px, 3.6vw, 38px); line-height: 1.1; letter-spacing: -.015em; margin: 6px 0 0; text-wrap: balance; }
+main h2 { font-family: var(--f-display); font-weight: 700; font-size: 26px; line-height: 1.2; margin: 36px 0 10px; text-wrap: balance; }
+main h3 { font-family: var(--f-display); font-weight: 700; font-size: 19px; margin: 28px 0 8px; }
+main p { margin: 0 0 14px; max-width: 70ch; }
+main ul, main ol { padding-left: 22px; margin: 0 0 16px; max-width: 70ch; }
+main li { margin-bottom: 5px; }
+blockquote { margin: 18px 0; padding: 14px 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; max-width: 70ch; }
+blockquote p { margin: 0; }
+.applies { font-family: var(--f-mono); font-size: 12.5px; color: var(--muted); margin: 0 0 8px; }
+.applies strong { color: var(--ink); }
+.rule { background: var(--accent-soft); border-radius: 10px; padding: 12px 16px; margin: 0 0 18px; color: #073F47; }
+.rule strong { font-family: var(--f-mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; margin-right: 6px; }
+
+.tablewrap { overflow-x: auto; margin: 14px 0 22px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; -webkit-overflow-scrolling: touch; }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; line-height: 1.5; }
+th { background: #EBF1EE; font-family: var(--f-mono); font-size: 11.5px; letter-spacing: .05em; text-transform: uppercase; text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 11px 12px; vertical-align: top; border-bottom: 1px solid var(--line); min-width: 150px; overflow-wrap: break-word; }
+tr:last-child td { border-bottom: 0; }
+td:first-child { font-weight: 500; }
+td.skip { background: var(--warn-soft); color: var(--warn); }
+td.m-yes, td.m-no, td.m-maybe { text-align: center; min-width: 90px; font-weight: 600; }
+td.m-yes { color: var(--ok); background: var(--ok-soft); }
+td.m-no { color: #6D7A75; }
+td.m-maybe { color: var(--warn); background: var(--warn-soft); font-weight: 500; font-size: 13px; }
+table.risk td:nth-child(3) { font-family: var(--f-mono); font-size: 12.5px; white-space: nowrap; }
+
+.checkcard { background: var(--surface); border: 1px solid var(--ink); border-radius: 12px; padding: 4px 16px 10px; margin: 22px 0 8px; box-shadow: 4px 4px 0 var(--ink); max-width: 70ch; }
+.checkhead { font-family: var(--f-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; padding: 12px 0 8px; border-bottom: 1px dashed var(--line); margin-bottom: 8px; }
+ul:has(> li.task) { list-style: none; padding-left: 0; }
+li.task { margin: 0; }
+.chk { display: flex; gap: 11px; align-items: flex-start; padding: 6px 4px; cursor: pointer; border-radius: 6px; }
+.chk:hover { background: #F0F5F3; }
+.chk input { appearance: none; -webkit-appearance: none; flex: none; width: 20px; height: 20px; margin: 2px 0 0; border: 2px solid var(--ink); border-radius: 5px; background: var(--surface); cursor: pointer; display: grid; place-content: center; }
+.chk input::after { content: ""; width: 10px; height: 6px; border-left: 2.5px solid #fff; border-bottom: 2.5px solid #fff; transform: rotate(-45deg) translate(1px, -1px); opacity: 0; }
+.chk input:checked { background: var(--accent); border-color: var(--accent); }
+.chk input:checked::after { opacity: 1; }
+.chk input:checked + span { color: var(--muted); text-decoration: line-through; text-decoration-color: #9DB0AA; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .meter i { transition: none; } }
+
+.foot { max-width: 1240px; margin: 0 auto; padding: 0 16px 60px; color: var(--muted); font-size: 13px; }
+
+@media (max-width: 900px) {
+  .shell { display: block; }
+  .index { display: none; }
+  .jump { display: block; margin: 0 0 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+  .jump summary { padding: 12px 14px; cursor: pointer; font-weight: 600; }
+  .jump nav a { display: block; padding: 9px 14px; border-top: 1px solid var(--line); text-decoration: none; color: var(--ink); font-size: 14px; }
+  .jump nav a .nk { font-family: var(--f-mono); font-size: 10.5px; color: var(--accent); text-transform: uppercase; margin-right: 8px; }
+  .hero { padding-top: 34px; }
+  .lede { font-size: 16.5px; }
+  .bar b { display: none; }
+}
+</style>
+
+<div class="bar"><div class="bar-in">
+  <b>Astro Migration Playbook</b>
+  <div class="meter" aria-hidden="true"><i id="fill"></i></div>
+  <span class="count" id="count">0 of 83 checked</span>
+  <button class="reset" id="reset" type="button">Reset</button>
+</div></div>
+
+<header class="hero">
+  <div class="kicker">EnactOn playbook</div>
+  <h1>Astro Migration Checklist</h1>
+  <p class="sub">A Plain-Language Playbook for New Builds and Migrations</p>
+  <div class="lede"><p>Moving a website to Astro is not hard because of Astro. It is hard because a website has hundreds of small things that work today and nobody remembers they exist: a button, a redirect, a table, a tracking tag, a link from another site. Teams launch, then find these things broken.</p>
+<p>This checklist runs from day one to the first 90 days after launch.</p></div>
+  <div class="howto"><span><b>Check</b>what to do</span><span><b>Why</b>why it matters</span><span><b>If skipped</b>what you will face</span></div>
+  <h2 class="pick">Who this is for</h2>
+  <div class="paths">
+    <div class="path"><h3>Building a new site or a new design</h3><p><strong>Biggest risk:</strong> pages nobody finds, and pages that compete with each other in search.</p><p><strong>Focus on:</strong> keyword research and the competition checks.</p></div>
+    <div class="path"><h3>Moving your site to Astro, same design and content</h3><p><strong>Biggest risk:</strong> things quietly going missing: links, structured data, buttons, forms.</p><p><strong>Focus on:</strong> the link checks and the page-by-page content comparison.</p></div>
+    <div class="path warn"><h3>Moving to Astro and redesigning at the same time</h3><p><strong>Biggest risk:</strong> not knowing what caused a traffic drop.</p><p><strong>Focus on:</strong> both sets of checks, and a written list of every change.</p></div>
+  </div>
+  <div class="facts">
+    <div><b>83</b><span>checks to complete</span></div>
+    <div><b>79</b><span>"if you skip it" warnings, each explained</span></div>
+    <div><b>14</b><span>real problems from our own migration</span></div>
+    <div><b>12</b><span>phases, from day one to day 90</span></div>
+    
+  </div>
+</header>
+
+<div class="shell">
+  <aside class="index" id="index" aria-label="Phases"><a href="#phase-1-copy-your-old-site-then-save-the"><span class="nk">Phase 1</span><span class="nt">Copy your old site, then save the key data</span></a><a href="#phase-2-decide-your-urls"><span class="nk">Phase 2</span><span class="nt">Decide your URLs</span></a><a href="#phase-3a-new-design-path-content-keyword"><span class="nk">Phase 3A</span><span class="nt">New design path (content, keywords, competition between pages)</span></a><a href="#phase-3b-old-design-path-links-structure"><span class="nk">Phase 3B</span><span class="nt">Old design path (links, structured data, URL checks)</span></a><a href="#phase-4-content-parity-nothing-missing-o"><span class="nk">Phase 4</span><span class="nt">Content parity (nothing missing on the new pages)</span></a><a href="#phase-5-staging-and-the-safety-net"><span class="nk">Phase 5</span><span class="nt">Staging and the safety net</span></a><a href="#phase-6-audit-staging-by-hand-and-with-a"><span class="nk">Phase 6</span><span class="nt">Audit staging, by hand and with AI agents</span></a><a href="#phase-7-mobile-checks"><span class="nk">Phase 7</span><span class="nt">Mobile checks</span></a><a href="#phase-8-forms-tracking-and-integrations"><span class="nk">Phase 8</span><span class="nt">Forms, tracking and integrations</span></a><a href="#phase-9-launch-day"><span class="nk">Phase 9</span><span class="nt">Launch day</span></a><a href="#phase-10-after-launch-new-sitemap-google"><span class="nk">Phase 10</span><span class="nt">After launch: new sitemap, Google Search Console, Bing Webmaster Tools</span></a><a href="#phase-11-monitoring-after-launch"><span class="nk">Phase 11</span><span class="nt">Monitoring after launch</span></a><a href="#part-12-real-problems-from-enacton-s-own"><span class="nk">Part 12</span><span class="nt">Real problems from EnactOn&#x27;s own WordPress to Astro migration</span></a><a href="#part-13-frequently-asked-questions"><span class="nk">Part 13</span><span class="nt">Frequently asked questions</span></a><a href="#last-note-about-this-playbook"><span class="nk">Last note</span><span class="nt">About this playbook</span></a></aside>
+  <main>
+    <details class="jump"><summary>Jump to a phase</summary><nav><a href="#phase-1-copy-your-old-site-then-save-the"><span class="nk">Phase 1</span><span class="nt">Copy your old site, then save the key data</span></a><a href="#phase-2-decide-your-urls"><span class="nk">Phase 2</span><span class="nt">Decide your URLs</span></a><a href="#phase-3a-new-design-path-content-keyword"><span class="nk">Phase 3A</span><span class="nt">New design path (content, keywords, competition between pages)</span></a><a href="#phase-3b-old-design-path-links-structure"><span class="nk">Phase 3B</span><span class="nt">Old design path (links, structured data, URL checks)</span></a><a href="#phase-4-content-parity-nothing-missing-o"><span class="nk">Phase 4</span><span class="nt">Content parity (nothing missing on the new pages)</span></a><a href="#phase-5-staging-and-the-safety-net"><span class="nk">Phase 5</span><span class="nt">Staging and the safety net</span></a><a href="#phase-6-audit-staging-by-hand-and-with-a"><span class="nk">Phase 6</span><span class="nt">Audit staging, by hand and with AI agents</span></a><a href="#phase-7-mobile-checks"><span class="nk">Phase 7</span><span class="nt">Mobile checks</span></a><a href="#phase-8-forms-tracking-and-integrations"><span class="nk">Phase 8</span><span class="nt">Forms, tracking and integrations</span></a><a href="#phase-9-launch-day"><span class="nk">Phase 9</span><span class="nt">Launch day</span></a><a href="#phase-10-after-launch-new-sitemap-google"><span class="nk">Phase 10</span><span class="nt">After launch: new sitemap, Google Search Console, Bing Webmaster Tools</span></a><a href="#phase-11-monitoring-after-launch"><span class="nk">Phase 11</span><span class="nt">Monitoring after launch</span></a><a href="#part-12-real-problems-from-enacton-s-own"><span class="nk">Part 12</span><span class="nt">Real problems from EnactOn&#x27;s own WordPress to Astro migration</span></a><a href="#part-13-frequently-asked-questions"><span class="nk">Part 13</span><span class="nt">Frequently asked questions</span></a><a href="#last-note-about-this-playbook"><span class="nk">Last note</span><span class="nt">About this playbook</span></a></nav></details>
+    <section class="block phase" id="phase-1-copy-your-old-site-then-save-the"><header class="phead"><span class="eyebrow">Phase 1</span><h2>Copy your old site, then save the key data</h2></header>
+<p class="applies"><strong>Applies to:</strong> anyone who already has a live site.</p>
+<p class="rule"><strong>Quick rule:</strong> before you change anything, keep a full working copy of the old site.</p>
+<h2>Step 1: Copy the old site to an "old" address</h2>
+<p>Make a full working copy of your current site at its own address, for example <code>old.yoursite.com</code>. This is a copy, not a move: your real site stays live at the normal address until launch day. The copy is only for your team.</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Why</th>
+<th>If you skip it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>It is your "before" picture.</strong> Open any old page next to the new one whenever you like. You do not need screenshots</td>
+<td class="skip">You rely on screenshots and memory, and argue later about what a page used to look like</td>
+</tr>
+<tr>
+<td><strong>It is your way back.</strong> If something breaks after launch, the old site is still there</td>
+<td class="skip">A broken launch stays broken until someone rebuilds the old site</td>
+</tr>
+<tr>
+<td><strong>You can recover what you missed:</strong> text, images and files that did not move</td>
+<td class="skip">Missing content has to be rebuilt from scratch</td>
+</tr>
+<tr>
+<td><strong>You can test redirects against real old pages</strong></td>
+<td class="skip">Redirects are tested only against a spreadsheet</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Protect the copy.</strong> Put noindex and a password on it, the same as staging (see Phase 5, Step 2). Otherwise two full copies of your website compete in Google. Also check that forms on the copy do not send leads to your real inbox, and that its links do not all point back to the live site.</p>
+<p><strong>How long to keep it:</strong> until your post-launch checks are clean and traffic and leads are stable. Many teams keep it for 30 to 90 days. This is a safe habit, not a fixed rule.</p>
+<h2>Step 2: Save the key data</h2>
+<p>The copy shows you how pages look. It does not tell you what matters most or where your traffic comes from. Save this before building anything:</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>What to save</th>
+<th>Why it matters</th>
+<th>If you skip it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>A full list of every page address.</strong> Combine a crawl of your site, your sitemap, pages shown in Search Console, and pages shown in your analytics</td>
+<td>Pages that are not on the list do not get moved, and nobody notices until visitors do</td>
+<td class="skip">Old pages quietly disappear. Visitors and search engines land on error pages</td>
+</tr>
+<tr>
+<td><strong>For every page: title, meta description, main heading (H1), canonical tag, and whether it is set to noindex</strong></td>
+<td>These control how your page shows in Google and what it is understood to be about</td>
+<td class="skip">Search results show different titles and descriptions than before, and clicks drop</td>
+</tr>
+<tr>
+<td><strong>Which pages get the most traffic, clicks and leads</strong> (last 3 to 6 months)</td>
+<td>Tells you which pages you must protect first</td>
+<td class="skip">You treat a page earning 5 leads a week the same as a forgotten one, and break the wrong thing</td>
+</tr>
+<tr>
+<td><strong>Which pages have links from other websites pointing to them</strong></td>
+<td>Those links carry trust. If the page moves without a redirect, the trust is lost</td>
+<td class="skip">You lose the benefit of links you worked hard to earn</td>
+</tr>
+<tr>
+<td><strong>Every form, chat tool, tracking tag, and connected tool</strong> (CRM, email, analytics, ad pixels)</td>
+<td>These are the invisible parts that make the site work for your business</td>
+<td class="skip">Leads stop arriving, or ad and analytics numbers go blank and nobody knows why</td>
+</tr>
+<tr>
+<td><strong>Existing redirects</strong> (from your old platform, plugins, or server rules)</td>
+<td>Old redirects protect old links. If you do not carry them over, they break</td>
+<td class="skip">Links that worked for years suddenly return errors</td>
+</tr>
+<tr>
+<td><strong>Speed and Core Web Vitals scores</strong> (Lighthouse or PageSpeed Insights)</td>
+<td>Your baseline. You can show the improvement, or catch a drop</td>
+<td class="skip">You cannot prove if the new site is faster or slower</td>
+</tr>
+</tbody>
+</table></div>
+<div class="checkcard"><div class="checkhead">Checklist for this phase</div><ul>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Old site copied to its own address, with noindex and a password</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Copy checked: forms do not reach the real inbox</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Full URL list created and saved</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Page-level details (title, description, H1, canonical, robots) exported</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Top pages by traffic and leads marked as "protect first"</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Pages with outside links marked</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>List of forms, tools, and tracking tags written</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Existing redirects exported</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Speed baseline saved</span></label></li>
+</ul></div>
+
+
+</section>
+<section class="block phase" id="phase-2-decide-your-urls"><header class="phead"><span class="eyebrow">Phase 2</span><h2>Decide your URLs</h2></header>
+<p class="applies"><strong>Applies to:</strong> anyone who already has a live site.</p>
+<p class="rule"><strong>Quick rule:</strong> keep the same URL unless you have a strong reason to change it.</p>
+<p>Every page has an address. Search engines, other websites, and your visitors' bookmarks all point to those addresses. You have two choices.</p>
+<h2>Option 1: Keep the same URLs (best choice when possible)</h2>
+<p>If your old page is at <code>/services/web-development/</code>, the new Astro page should live at exactly <code>/services/web-development/</code>.</p>
+<ul>
+<li><strong>Why:</strong> nothing needs to be redirected, so nothing can break in the redirect.</li>
+<li><strong>If you skip it:</strong> every changed address is a chance to lose ranking and links.</li>
+</ul>
+<p><strong>One detail people forget:</strong> <code>/page</code> and <code>/page/</code> (with and without the last slash) are treated as two different addresses. Pick one style, set Astro and your hosting to use it, and use it everywhere: links, sitemap, canonical tags. If you do not, you can end up with two copies of every page.</p>
+<h2>Option 2: Use new URLs</h2>
+<p>Sometimes new URLs are needed: a new site structure, merged pages, a cleaner naming system. If so, you must build a <strong>redirect map</strong>.</p>
+<p><strong>What it is:</strong> think of the form you fill in at the post office when you move house. Anyone who still writes to your old address gets their mail forwarded to the new one. On a website, the "people writing to the old address" are Google, other websites that link to you, and visitors with a bookmark. The redirect map is the list that says, for every old page, where to forward it.</p>
+<p><strong>How to build it:</strong></p>
+<ol>
+<li>Open the full page list you saved in Phase 1.</li>
+<li>Mark every page whose address will change on the new site.</li>
+<li>For each one, write down the address of the closest matching new page.</li>
+<li>Give the list to your developer to set up as permanent (301) redirects, and test them on staging.</li>
+</ol>
+<p><strong>Example:</strong></p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Old address</th>
+<th>New address</th>
+<th>What it means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/services/web-development/</code></td>
+<td><code>/web-development-company/</code></td>
+<td>The page moved. Anyone opening the old address lands on the new page, and Google learns the page has moved and passes its ranking strength across</td>
+</tr>
+<tr>
+<td><code>/blog/2019/astro-tips/</code></td>
+<td><code>/blog/astro-tips/</code></td>
+<td>The date was dropped from the address. Old links from other websites still work</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Pages that do not go on the list:</strong></p>
+<ul>
+<li>A page that keeps the same address needs no redirect.</li>
+<li>A page you are removing for good has no new home. Let it show "page not found" (404 or 410) instead of forwarding it somewhere unrelated.</li>
+</ul>
+<p><strong>The rules for a good redirect map</strong></p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Rule</th>
+<th>Why</th>
+<th>If you break it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Use a permanent redirect (301)</strong></td>
+<td>Tells search engines the move is for good, so they pass the old page's strength to the new one</td>
+<td class="skip">Search engines may keep the old address and treat the new one as a new, unproven page</td>
+</tr>
+<tr>
+<td><strong>One hop only.</strong> Old address goes straight to the final address</td>
+<td>Chains (old, then middle, then final) slow things down and can lose signals</td>
+<td class="skip">Pages load slower. Google follows up to 10 hops, then stops, so a long chain can leave the final page undiscovered</td>
+</tr>
+<tr>
+<td><strong>Send each old page to the closest matching new page</strong></td>
+<td>Visitors and search engines expect the same topic</td>
+<td class="skip">Sending everything to the homepage looks like an error to Google and confuses visitors</td>
+</tr>
+<tr>
+<td><strong>Pages with no replacement should return "not found" (404) or "gone" (410)</strong></td>
+<td>It is honest, and Google drops pages that return either code from its index (it treats 404 and 410 very similarly)</td>
+<td class="skip">Redirecting dead pages to the homepage hides the problem and creates a poor experience</td>
+</tr>
+<tr>
+<td><strong>Keep redirects live for at least a year</strong> (longer is better)</td>
+<td>Google needs time to process the move, and old links keep existing for years</td>
+<td class="skip">Redirects removed too early bring back old errors and lost traffic</td>
+</tr>
+</tbody>
+</table></div>
+<h2>Decide what happens to every page</h2>
+<p>Go through your URL list from Phase 1 and give every page one decision:</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Decision</th>
+<th>Use it when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Keep</strong></td>
+<td>The page ranks, converts, earns links, or supports sales. Keep the URL and the meaning of the content</td>
+</tr>
+<tr>
+<td><strong>Improve</strong></td>
+<td>The page is useful but weak. Keep the URL and topic, upgrade the content, and write down what changed</td>
+</tr>
+<tr>
+<td><strong>Merge</strong></td>
+<td>Several pages compete for the same search. Build one stronger page and redirect the others to it</td>
+</tr>
+<tr>
+<td><strong>Redirect</strong></td>
+<td>The page is going away but has traffic or links, and there is a close replacement</td>
+</tr>
+<tr>
+<td><strong>Noindex</strong></td>
+<td>Useful for visitors, but should not show in search (for example, thank-you pages)</td>
+</tr>
+<tr>
+<td><strong>Remove</strong></td>
+<td>No traffic, no links, no replacement</td>
+</tr>
+<tr>
+<td><strong>Investigate</strong></td>
+<td>Nobody is sure. Do not launch until someone decides</td>
+</tr>
+</tbody>
+</table></div>
+<div class="checkcard"><div class="checkhead">Checklist for this phase</div><ul>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Decided: same URLs or new URLs</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Trailing slash style chosen and set</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Every old page has a decision</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Redirect map built (if URLs change)</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Redirect rules reviewed: 301, one hop, closest match</span></label></li>
+</ul></div>
+
+
+</section>
+<section class="block phase" id="phase-3a-new-design-path-content-keyword"><header class="phead"><span class="eyebrow">Phase 3A</span><h2>New design path (content, keywords, competition between pages)</h2></header>
+<p class="applies"><strong>Applies to:</strong> new builds, and moves with a redesign.</p>
+<p class="rule"><strong>Quick rule:</strong> every page should have one clear job in search, and no two pages should have the same job.</p>
+<p>A new design usually means new content. That is a chance to do search work properly, and also a chance to hurt yourself if you skip it.</p>
+<h2>Step 1: Plan your pages</h2>
+<p>Write down every page the new site will have, and for each one, decide: new, rewritten, or carried over.</p>
+<ul>
+<li><strong>Why:</strong> this stops pages being built "because the design had room for one".</li>
+<li><strong>If you skip it:</strong> you end up with thin pages, duplicates, and gaps where visitors expected an answer.</li>
+</ul>
+<h2>Step 2: Do keyword research for every page</h2>
+<p>For each page, find the words people actually type into search when they want what that page offers. Choose one <strong>main keyword</strong> and a few <strong>supporting keywords</strong>. Also write down the <strong>search intent</strong>: what is the person really looking for? A how-to guide? A price? A list of options? A company to hire?</p>
+<p>Put it all in a <strong>keyword map</strong>:</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Page URL</th>
+<th>Main keyword</th>
+<th>Supporting keywords</th>
+<th>What the searcher wants</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/astro-migration-services/</code></td>
+<td>astro migration services</td>
+<td>hire astro developer, website to astro</td>
+<td>Find a company to do the work</td>
+<td>New</td>
+</tr>
+<tr>
+<td><code>/blog/astro-migration-checklist/</code></td>
+<td>astro migration checklist</td>
+<td>astro migration steps</td>
+<td>A step-by-step guide to follow</td>
+<td>New</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li><strong>Why:</strong> search engines match pages to what people want. A page written without a keyword and intent in mind often matches nothing.</li>
+<li><strong>If you skip it:</strong> pages look good but nobody finds them. Traffic after launch is lower than before.</li>
+</ul>
+<h2>Step 3: Optimize every page for its keyword</h2>
+<p>For every page, check these items against its main keyword:</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Item</th>
+<th>What to check</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Main heading (H1)</strong></td>
+<td>Contains the main keyword, written for a human</td>
+<td>The H1 is the strongest signal of what the page is about</td>
+</tr>
+<tr>
+<td><strong>Page title</strong> (the title tag, shown in search results)</td>
+<td>Contains the keyword, makes people want to click</td>
+<td>It is the headline people see in Google</td>
+</tr>
+<tr>
+<td><strong>Meta description</strong></td>
+<td>Describes the page honestly and invites the click</td>
+<td>It is the short text under the title in search results</td>
+</tr>
+<tr>
+<td><strong>URL</strong></td>
+<td>Short, readable, contains the keyword</td>
+<td>Easier for people and search engines to understand</td>
+</tr>
+<tr>
+<td><strong>Subheadings</strong></td>
+<td>Cover related questions people ask</td>
+<td>Helps the page answer more searches</td>
+</tr>
+<tr>
+<td><strong>First paragraph</strong></td>
+<td>Answers the main question quickly</td>
+<td>Visitors and search engines both look here first</td>
+</tr>
+<tr>
+<td><strong>Images</strong></td>
+<td>Descriptive file names and alt text</td>
+<td>Helps accessibility and image search</td>
+</tr>
+<tr>
+<td><strong>Internal links</strong></td>
+<td>Link to related pages with clear link text</td>
+<td>Spreads strength across your site and helps visitors move around</td>
+</tr>
+<tr>
+<td><strong>Structured data (schema)</strong></td>
+<td>Added where it fits: article, FAQ, organization, breadcrumb, product</td>
+<td>Helps search engines understand the page</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>If you skip it:</strong> the new pages are well designed but carry weaker signals than the old ones. Rankings slip.</p>
+<h2>Step 4: Check for competition between your own pages (cannibalization)</h2>
+<p><strong>What it is:</strong> two or more of your pages target the same search. Google has to guess which one to show. It may pick the weaker page, or swap between them, so neither ranks well.</p>
+<p><strong>How to check, in order:</strong></p>
+<ol>
+<li><strong>Look at your keyword map.</strong> If the same main keyword appears on two rows, you have a problem before you start.</li>
+<li><strong>Search Google for your keyword with your site name,</strong> for example <code>site:yoursite.com "astro migration checklist"</code>. If several pages appear that could each answer the question, they may be competing.</li>
+<li><strong>In Search Console,</strong> open Performance, click a keyword, then open the Pages tab. If many of your pages show for that one keyword, they are competing.</li>
+<li><strong>Check the whole site, not only the new pages.</strong> Old pages that you carried over can compete with the new ones.</li>
+</ol>
+<p><strong>How to fix it:</strong></p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Situation</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Two pages say nearly the same thing</td>
+<td><strong>Merge</strong> them into one stronger page and 301 redirect the weaker one</td>
+</tr>
+<tr>
+<td>Two pages cover different needs but share a keyword</td>
+<td><strong>Change the focus</strong> of each: different main keyword, different title, different H1</td>
+</tr>
+<tr>
+<td>A page exists only as a duplicate (for example a print version)</td>
+<td>Use a <strong>canonical tag</strong> to point to the main page</td>
+</tr>
+<tr>
+<td>A page is useful to visitors but should not rank</td>
+<td>Set it to <strong>noindex</strong></td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li><strong>Why:</strong> one strong page beats two weak ones.</li>
+<li><strong>If you skip it:</strong> rankings go up and down, the "wrong" page shows in search, and you cannot tell why traffic dropped after launch.</li>
+</ul>
+<h2>Step 5: Write content that is worth reading</h2>
+<ul>
+<li>Answer the real question on the page, not around it.</li>
+<li>Keep proof, tables, FAQs, and examples that helped the old pages.</li>
+<li>Do not change the meaning of a page that already ranks. If it ranks for "astro migration checklist", the new version must still be clearly about that.</li>
+<li><strong>If you skip it:</strong> thin or vague content ranks poorly, and AI answer tools have no reason to quote you.</li>
+</ul>
+<div class="checkcard"><div class="checkhead">Checklist for this phase</div><ul>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Page list written (new, rewritten, carried over)</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Keyword map built (one main keyword per page)</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Search intent written for each page</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Titles, H1s, descriptions, and URLs match the keyword map</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Cannibalization checked across the whole site</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Duplicate topics merged, separated, or noindexed</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Content for ranking pages keeps the same meaning</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Schema planned for each page type</span></label></li>
+</ul></div>
+
+
+</section>
+<section class="block phase" id="phase-3b-old-design-path-links-structure"><header class="phead"><span class="eyebrow">Phase 3B</span><h2>Old design path (links, structured data, URL checks)</h2></header>
+<p class="applies"><strong>Applies to:</strong> moves that keep the design, and moves with a redesign.</p>
+<p class="rule"><strong>Quick rule:</strong> if the design stays, the site must behave exactly the same.</p>
+<p>When you keep the old design, visitors expect nothing to change. Your job is to rebuild the same site on a new foundation, with nothing lost.</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Check</th>
+<th>How</th>
+<th>Why</th>
+<th>If you skip it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Broken internal links</strong> (links from one of your pages to another)</td>
+<td>Crawl the old site and the staging site. List every link that returns an error</td>
+<td>Broken links frustrate visitors and waste the attention of search engines</td>
+<td class="skip">Visitors hit error pages. Search engines stop trusting the site's structure</td>
+</tr>
+<tr>
+<td><strong>Broken external links</strong> (links from your pages to other websites)</td>
+<td>Same crawl, filter for outside links that fail</td>
+<td>Dead outside links make pages look neglected</td>
+<td class="skip">Pages look outdated and visitors leave</td>
+</tr>
+<tr>
+<td><strong>Internal links match the old site</strong> (menu, footer, breadcrumbs, related posts, links inside text)</td>
+<td>Compare link counts for important pages, old versus new</td>
+<td>Internal links tell search engines which pages matter most</td>
+<td class="skip">Important pages lose strength because fewer pages point to them</td>
+</tr>
+<tr>
+<td><strong>Links point to final addresses, not redirected ones</strong></td>
+<td>In the staging crawl, filter for links that return a 301</td>
+<td>Redirects are a safety net, not the plan</td>
+<td class="skip">Slower pages and weaker signals</td>
+</tr>
+<tr>
+<td><strong>Structured data (schema) is the same</strong></td>
+<td>List schema types per page type (article, FAQ, breadcrumb, organization, product). Test on staging with Google's Rich Results Test or the Schema Markup Validator</td>
+<td>Schema helps search engines and AI tools understand your pages</td>
+<td class="skip">Schema disappears silently. The page still looks fine, so nobody notices</td>
+</tr>
+<tr>
+<td><strong>Titles, descriptions, H1, canonical, and robots tag match the Phase 1 export</strong></td>
+<td>Crawl staging and compare against the Phase 1 export</td>
+<td>These are what search results are built from</td>
+<td class="skip">Titles in Google change overnight, and clicks drop</td>
+</tr>
+<tr>
+<td><strong>Social sharing tags</strong> (the preview image, title and text when someone shares a link)</td>
+<td>Check each page type in a share preview</td>
+<td>First impression in social posts and chat apps</td>
+<td class="skip">Shared links look broken or empty</td>
+</tr>
+<tr>
+<td><strong>Images and downloads load from working addresses</strong></td>
+<td>Check that every image and PDF loads. Watch for old address patterns from your previous platform</td>
+<td>Image paths often change when the platform changes</td>
+<td class="skip">Empty boxes where images used to be, and broken PDF links</td>
+</tr>
+</tbody>
+</table></div>
+<div class="checkcard"><div class="checkhead">Checklist for this phase</div><ul>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Broken internal links fixed</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Broken outside links fixed or removed</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Menu, footer, breadcrumb, and in-text links match the old site</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Internal links point to final addresses</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Schema compared page type by page type and tested</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Titles, descriptions, H1s, canonicals match the Phase 1 export</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Social sharing tags checked</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Images and downloads load</span></label></li>
+</ul></div>
+
+
+</section>
+<section class="block phase" id="phase-4-content-parity-nothing-missing-o"><header class="phead"><span class="eyebrow">Phase 4</span><h2>Content parity (nothing missing on the new pages)</h2></header>
+<p class="applies"><strong>Applies to:</strong> moves that keep the design, and moves with a redesign.</p>
+<p class="rule"><strong>Quick rule:</strong> a page has not migrated just because the new page exists. It has migrated when it contains everything the old page did.</p>
+<p>This is the phase most teams underestimate. A page can load, look fine, and still be missing a button, a section of cards, a table, or half the FAQs. It is especially common when pages are rebuilt by scripts, scrapers, or AI tools that read the old site and generate the new one. Section 12 of this playbook lists the real problems found on EnactOn's own migration.</p>
+<h2>The page-by-page parity check</h2>
+<p>Open the old page and the new page side by side. Go from top to bottom. Tick every item:</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Item</th>
+<th>What to compare</th>
+<th>Why it matters</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Title and meta description</strong></td>
+<td>Same text, or an approved improvement</td>
+<td>Controls what shows in search results</td>
+</tr>
+<tr>
+<td><strong>Headings, in order</strong></td>
+<td>Same headings, same order, same levels</td>
+<td>Search engines read the heading order to understand the page</td>
+</tr>
+<tr>
+<td><strong>Body text</strong></td>
+<td>Every paragraph is present, nothing duplicated</td>
+<td>Missing text means missing keywords and missing answers</td>
+</tr>
+<tr>
+<td><strong>Cards</strong></td>
+<td>Title, description, icon, and image on each card</td>
+<td>Scripts often copy the title and skip the rest</td>
+</tr>
+<tr>
+<td><strong>Buttons and links</strong></td>
+<td>Every button is visible, has the right text, and goes to the right place</td>
+<td>A button can exist in the data and still not appear on screen</td>
+</tr>
+<tr>
+<td><strong>Lists</strong></td>
+<td>Same items, same order</td>
+<td>Lists often hold the most useful details</td>
+</tr>
+<tr>
+<td><strong>Tables, including pricing and comparison tables</strong></td>
+<td>Headers, descriptions, all rows, and any button inside the table</td>
+<td>Tables are often partly copied</td>
+</tr>
+<tr>
+<td><strong>FAQs</strong></td>
+<td>Every question and answer</td>
+<td>FAQs answer real searches and are often quoted by AI answer tools</td>
+</tr>
+<tr>
+<td><strong>Testimonials and proof</strong></td>
+<td>Names, quotes, logos, ratings</td>
+<td>Trust content drives leads</td>
+</tr>
+<tr>
+<td><strong>Images</strong></td>
+<td>The right image in the right place, with alt text. No empty placeholders</td>
+<td>Wrong or missing images are very visible</td>
+</tr>
+<tr>
+<td><strong>Videos and embeds</strong></td>
+<td>Play correctly</td>
+<td>Often break on platform change</td>
+</tr>
+<tr>
+<td><strong>Forms</strong></td>
+<td>Show up, submit, and deliver</td>
+<td>See Phase 8</td>
+</tr>
+<tr>
+<td><strong>Whole sections</strong></td>
+<td>Process steps, timelines, comparison matrices, calls to action</td>
+<td>Entire sections can be missed by automated tools</td>
+</tr>
+<tr>
+<td><strong>Grouping</strong></td>
+<td>Things that were together on the old page are still together</td>
+<td>A benefit under a pricing plan can end up in a different section</td>
+</tr>
+</tbody>
+</table></div>
+<h2>How to make this check faster and safer</h2>
+<ol>
+<li><strong>Group pages by type</strong> (service page, industry page, case study, blog post, landing page). Fix the template for each type, then check every page of that type.</li>
+<li><strong>Expect variations.</strong> Pages of the same type are often built a little differently. A fix that works for 9 pages may break the 10th.</li>
+<li><strong>After any change to a template, check all pages of that type again.</strong> Fixing one problem can cause another.</li>
+<li><strong>Compare your page list with your live sitemap.</strong> Pages that exist on the old site but not in the new project are easy to miss.</li>
+<li><strong>Never trust automated output without a visual check.</strong> Scripts are fast, but they miss things.</li>
+</ol>
+<div class="checkcard"><div class="checkhead">Checklist for this phase</div><ul>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Page types listed</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Parity check completed for every page, or for every page type plus the top pages</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Page list compared against the live sitemap</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Missing pages found and moved</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>After each template fix, all pages of that type rechecked</span></label></li>
+</ul></div>
+
+
+</section>
+<section class="block phase" id="phase-5-staging-and-the-safety-net"><header class="phead"><span class="eyebrow">Phase 5</span><h2>Staging and the safety net</h2></header>
+<p class="applies"><strong>Applies to:</strong> everyone.</p>
+<p class="rule"><strong>Quick rule:</strong> nothing goes live until you are 100% sure. Build and review everything on staging first.</p>
+<h2>Step 1: Build on a staging site</h2>
+<p>A staging site is a private copy of the new website at a separate address (for example <code>staging.yoursite.com</code>, or a preview address from your hosting). It looks and works like the real site, but only your team should be able to see it.</p>
+<p>Build the new site there, including every new or rewritten page. Do not publish any of it to the live site while you work. The live site keeps running as it is until the audit in Phase 6 is clean and you are sure.</p>
+<ul>
+<li><strong>Why:</strong> it is the only safe place to find problems.</li>
+<li><strong>If you skip it:</strong> you find problems when real visitors and Google do, and you fix them in public.</li>
+</ul>
+<h2>Step 2: Keep staging out of search results (noindex, and a password)</h2>
+<p>Add the <strong>noindex</strong> setting to every page on staging, <strong>and</strong> protect the staging site with a password or by limiting access to your team.</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Why you do this</th>
+<th>If you do not</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Search engines can find staging by accident.</strong> They follow links, and a link in an email or a shared document is enough</td>
+<td class="skip">Your unfinished site appears in Google</td>
+</tr>
+<tr>
+<td><strong>A staging copy is a duplicate of your real site.</strong> Two near-identical sites compete with each other</td>
+<td class="skip">The staging address can outrank your real pages, or Google picks the wrong version as "main"</td>
+</tr>
+<tr>
+<td><strong>Unfinished or test content is visible to everyone</strong></td>
+<td class="skip">Placeholder text, draft prices, and test pages are public</td>
+</tr>
+<tr>
+<td><strong>Staging pages may carry the wrong canonical tags</strong></td>
+<td class="skip">Google treats the staging address as the main address</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Do not rely on robots.txt alone.</strong> A robots.txt "block" asks search engines not to visit a page. But search engines can still list the address if they find a link to it, and because they are not allowed to visit, they cannot see the noindex note on the page. Use noindex plus a password. Use robots.txt as an extra, not as the only protection.</p>
+<h2>Step 3: Write your rollback plan before launch</h2>
+<p>A rollback plan answers three questions in advance:</p>
+<ol>
+<li><strong>What counts as "bad enough" to go back?</strong> For example: the homepage is down, forms do not deliver, or noindex is live on production.</li>
+<li><strong>Who decides?</strong> One named person, available on launch day.</li>
+<li><strong>What are the steps?</strong> Written down, with the person who does each step.</li>
+</ol>
+<p>Also, if your domain's DNS settings have a "time to live" (TTL) value, lower it a day or two before launch. This makes switching back faster. (This is common practice, not a Google requirement. Ask your hosting provider how it works for your setup.)</p>
+<ul>
+<li><strong>Why:</strong> deciding under pressure leads to bad choices.</li>
+<li><strong>If you skip it:</strong> teams argue for hours while the site is broken.</li>
+</ul>
+<div class="checkcard"><div class="checkhead">Checklist for this phase</div><ul>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Staging site built</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Staging has noindex and a password</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Rollback plan written, with an owner</span></label></li>
+</ul></div>
+
+
+</section>
+<section class="block phase" id="phase-6-audit-staging-by-hand-and-with-a"><header class="phead"><span class="eyebrow">Phase 6</span><h2>Audit staging, by hand and with AI agents</h2></header>
+<p class="applies"><strong>Applies to:</strong> everyone.</p>
+<p class="rule"><strong>Quick rule:</strong> use machines to check everything, and humans to check what matters most.</p>
+<p>Once you have finished the cannibalization check, the redirect check, the internal and external link check, and the keyword check, do not launch yet. Audit the whole staging site first.</p>
+<h2>Step 1: Crawl the staging site with a tool</h2>
+<p>Use a crawler (for example Screaming Frog, Sitebulb, or similar) and look for:</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>What to look for</th>
+<th>Why</th>
+<th>If you skip it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Pages returning errors (404, 500)</td>
+<td>Broken pages</td>
+<td class="skip">Visitors hit dead ends</td>
+</tr>
+<tr>
+<td>Redirect chains and loops</td>
+<td>Slow pages, pages that never load</td>
+<td class="skip">Pages never get indexed</td>
+</tr>
+<tr>
+<td>Missing or duplicate titles and descriptions</td>
+<td>Weak search results</td>
+<td class="skip">Pages blend together in Google</td>
+</tr>
+<tr>
+<td>Missing or multiple H1 headings</td>
+<td>Unclear page topic</td>
+<td class="skip">Search engines misread the page</td>
+</tr>
+<tr>
+<td>Wrong canonical addresses</td>
+<td>Tells Google the wrong "main" version</td>
+<td class="skip">The wrong page ranks, or none</td>
+</tr>
+<tr>
+<td>Noindex tags where they should not be (and the reverse)</td>
+<td>On staging they should be on. On the real site, they should be off</td>
+<td class="skip">Pages vanish from search</td>
+</tr>
+<tr>
+<td>Images with no alt text or broken paths</td>
+<td>Accessibility and image search</td>
+<td class="skip">Empty boxes and lost image traffic</td>
+</tr>
+<tr>
+<td>Pages with very few words</td>
+<td>Possible missing content</td>
+<td class="skip">Thin pages that rank poorly</td>
+</tr>
+</tbody>
+</table></div>
+<h2>Step 2: Test every redirect</h2>
+<p>Take the full list of old addresses and request each one. Confirm:</p>
+<ul>
+<li class="task"><label class="chk"><input type="checkbox"/><span>It lands on the correct new page</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>It uses a 301</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>It takes one hop</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>There is no loop</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>The http to https and www to non-www (or the reverse) versions also land on the right page</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Capital letters and trailing slashes behave as planned</span></label></li>
+</ul>
+<h2>Step 3: Re-run the cannibalization check on the final set of pages</h2>
+<p>Plans change while building. Check again with the real pages and real titles.</p>
+<h2>Step 4: Manual review by a person</h2>
+<p>Tools do not see what a human sees. Have a person read:</p>
+<ul>
+<li><strong>Every page that earns traffic or leads</strong>, top to bottom, on desktop and on phone.</li>
+<li><strong>A sample of every other page type.</strong></li>
+</ul>
+<p>Look for: missing sections, text that cuts off, wrong images, buttons that do nothing, odd spacing, pages that feel unfinished.</p>
+<h2>Step 5: Use AI agents as a second pair of eyes</h2>
+<p>AI agents are good at checking many pages quickly. Give them clear, narrow jobs. Examples of tasks that work well:</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Task for an AI agent</th>
+<th>What it catches</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>"Compare this old page and this new page. List everything on the old page that is missing from the new page: headings, paragraphs, buttons, images, tables, FAQs, links"</td>
+<td>Missing content</td>
+</tr>
+<tr>
+<td>"List every link on this page that returns an error or a redirect"</td>
+<td>Broken and redirected links</td>
+</tr>
+<tr>
+<td>"Check that every page has one H1, a title under 60 characters, and a meta description"</td>
+<td>Basic on-page problems</td>
+</tr>
+<tr>
+<td>"Read these two pages and tell me if they target the same search. Explain why"</td>
+<td>Cannibalization suspects</td>
+</tr>
+<tr>
+<td>"Check these pages for text that appears twice"</td>
+<td>Duplicate content</td>
+</tr>
+<tr>
+<td>"Compare the schema on the old and new version of this page"</td>
+<td>Lost structured data</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>What AI agents are not good at:</strong> judging whether the page <em>feels</em> right, noticing a button hidden by a layout problem, and knowing which pages matter most to your business. They can also report that "everything matches" when it does not. So always have a person verify the pages that matter, and spot-check the agent's own claims.</p>
+<div class="checkcard"><div class="checkhead">Checklist for this phase</div><ul>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Staging crawled and issues fixed</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Every redirect tested</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Cannibalization rechecked on the final pages</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Top pages read by a person</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>AI agent checks run, with spot checks on their results</span></label></li>
+</ul></div>
+
+
+</section>
+<section class="block phase" id="phase-7-mobile-checks"><header class="phead"><span class="eyebrow">Phase 7</span><h2>Mobile checks</h2></header>
+<p class="applies"><strong>Applies to:</strong> everyone.</p>
+<p class="rule"><strong>Quick rule:</strong> a site that works on a laptop can still be broken on a phone.</p>
+<p>Google mostly uses the <strong>mobile version</strong> of your pages to decide how to rank them. Many of your visitors are on phones. Mobile problems are some of the most common ones found after launch.</p>
+<p>Test on <strong>real phones</strong> (at least one iPhone and one Android), and also in your browser's device mode. Check:</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Why</th>
+<th>If you skip it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>The page scrolls smoothly, up and down</strong></td>
+<td>Layout bugs can lock scrolling or cause jumps</td>
+<td class="skip">Visitors cannot reach the content or the button</td>
+</tr>
+<tr>
+<td><strong>There is no sideways scrolling</strong></td>
+<td>A wide image, table or element pushes the page wider than the screen</td>
+<td class="skip">The page feels broken and visitors leave</td>
+</tr>
+<tr>
+<td><strong>The menu opens, closes, and every link works</strong></td>
+<td>Menus often break on a new build</td>
+<td class="skip">Visitors cannot get around the site</td>
+</tr>
+<tr>
+<td><strong>Nothing overlaps</strong> (sticky headers, banners, chat widgets, cookie notices)</td>
+<td>Layers can cover buttons or text</td>
+<td class="skip">Buttons cannot be tapped</td>
+</tr>
+<tr>
+<td><strong>Tables are readable</strong></td>
+<td>Wide tables often run off the screen</td>
+<td class="skip">Pricing and comparison data become unreadable</td>
+</tr>
+<tr>
+<td><strong>Buttons and links are big enough to tap</strong></td>
+<td>Small targets cause mis-taps</td>
+<td class="skip">Forms and calls to action get fewer clicks</td>
+</tr>
+<tr>
+<td><strong>Forms can be filled in and submitted</strong></td>
+<td>The keyboard can cover fields</td>
+<td class="skip">Leads are lost</td>
+</tr>
+<tr>
+<td><strong>Images are not cut off or stretched</strong></td>
+<td>Image sizing often changes on mobile</td>
+<td class="skip">The page looks unprofessional</td>
+</tr>
+<tr>
+<td><strong>Text is readable without zooming</strong></td>
+<td>Fonts and spacing can change</td>
+<td class="skip">Visitors leave</td>
+</tr>
+<tr>
+<td><strong>Pop-ups can be closed</strong></td>
+<td>A pop-up with no visible close button traps the visitor</td>
+<td class="skip">The site is unusable</td>
+</tr>
+<tr>
+<td><strong>Page does not jump around while loading</strong></td>
+<td>Images and fonts that load late push content down</td>
+<td class="skip">Visitors tap the wrong thing, and your speed scores suffer</td>
+</tr>
+<tr>
+<td><strong>Speed is acceptable on mobile</strong> (run Lighthouse or PageSpeed Insights in mobile mode)</td>
+<td>Phones are slower than laptops</td>
+<td class="skip">Slow pages lose visitors and search visibility</td>
+</tr>
+</tbody>
+</table></div>
+<div class="checkcard"><div class="checkhead">Checklist for this phase</div><ul>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Tested on at least one iPhone and one Android phone</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Tested in browser device mode at several widths</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Scrolling, menu, tables, forms, buttons, and pop-ups checked</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Mobile speed scores checked</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Every issue logged and fixed</span></label></li>
+</ul></div>
+
+
+</section>
+<section class="block phase" id="phase-8-forms-tracking-and-integrations"><header class="phead"><span class="eyebrow">Phase 8</span><h2>Forms, tracking and integrations</h2></header>
+<p class="applies"><strong>Applies to:</strong> everyone.</p>
+<p class="rule"><strong>Quick rule:</strong> a site can look perfect and still lose every lead.</p>
+<p>Forms and tracking are the quiet parts of a website. They are rebuilt differently in Astro, and they break without an error message.</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Check</th>
+<th>How</th>
+<th>Why</th>
+<th>If you skip it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Every form submits and arrives</strong></td>
+<td>Fill in each form on staging as a real visitor. Confirm the message reaches the right inbox or CRM with all fields</td>
+<td>A form that shows "thank you" may still deliver nothing</td>
+<td class="skip">Leads vanish, and you find out weeks later</td>
+</tr>
+<tr>
+<td><strong>Thank-you pages and confirmation messages work</strong></td>
+<td>Check what appears after submitting</td>
+<td>Visitors need to know it worked</td>
+<td class="skip">Visitors submit twice or leave unsure</td>
+</tr>
+<tr>
+<td><strong>Spam protection still works</strong></td>
+<td>Check captcha or other protection</td>
+<td>Old plugins used to handle this</td>
+<td class="skip">Spam floods the inbox</td>
+</tr>
+<tr>
+<td><strong>Analytics records page views</strong></td>
+<td>Visit pages and check the live reports</td>
+<td>Your history and reports depend on it</td>
+<td class="skip">You lose a stretch of data you cannot get back</td>
+</tr>
+<tr>
+<td><strong>Conversion events fire</strong></td>
+<td>Complete a test conversion and check it records</td>
+<td>Reports and ad bidding use these</td>
+<td class="skip">Reports show zero leads, and ad platforms stop learning</td>
+</tr>
+<tr>
+<td><strong>Ad pixels and tags load</strong></td>
+<td>Check tag manager and each pixel</td>
+<td>Ads depend on them</td>
+<td class="skip">Ad performance drops, and spending is wasted</td>
+</tr>
+<tr>
+<td><strong>Cookie and consent notice works</strong></td>
+<td>Check that tags respect the choices</td>
+<td>Required in many countries</td>
+<td class="skip">Legal risk, or tracking that does not fire</td>
+</tr>
+<tr>
+<td><strong>Booking, chat, and CRM connections work</strong></td>
+<td>Test each connection</td>
+<td>These bring in business</td>
+<td class="skip">A booking link that fails costs real deals</td>
+</tr>
+<tr>
+<td><strong>Tracking tags load in a sensible order</strong></td>
+<td>Check after a tag is added or moved</td>
+<td>Order can change what is tracked</td>
+<td class="skip">Numbers differ from before, and nobody knows why</td>
+</tr>
+</tbody>
+</table></div>
+<div class="checkcard"><div class="checkhead">Checklist for this phase</div><ul>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Every form tested end to end</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Thank-you pages checked</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Spam protection tested</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Analytics page views and events confirmed</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Ad pixels and tag manager confirmed</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Cookie notice tested</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>CRM, booking, chat, and email connections tested</span></label></li>
+</ul></div>
+
+
+</section>
+<section class="block phase" id="phase-9-launch-day"><header class="phead"><span class="eyebrow">Phase 9</span><h2>Launch day</h2></header>
+<p class="applies"><strong>Applies to:</strong> everyone.</p>
+<p class="rule"><strong>Quick rule:</strong> launch day should be boring. Everything has been decided and tested already.</p>
+<p>Pick a quiet time. Avoid big campaigns, product announcements, and peak traffic. Freeze unrelated edits for the day. Have your rollback owner available.</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Launch item</th>
+<th>What to confirm</th>
+<th>Why</th>
+<th>If you skip it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Remove noindex from the live site</strong></td>
+<td>View the page source of the homepage and several key pages. Search for <code>noindex</code>. None should be there</td>
+<td>Staging used noindex. Carrying it across tells Google to ignore the site</td>
+<td class="skip">The site disappears from search, sometimes for weeks</td>
+</tr>
+<tr>
+<td><strong>Remove the staging password</strong> from the live site</td>
+<td>Open the site in a private window</td>
+<td>Search engines cannot visit a password page</td>
+<td class="skip">Nobody can see the site</td>
+</tr>
+<tr>
+<td><strong>Canonical tags point to the real address</strong></td>
+<td>Check a sample of pages</td>
+<td>Staging canonicals tell Google the wrong "main" version</td>
+<td class="skip">Google treats the staging address as the real one</td>
+</tr>
+<tr>
+<td><strong>robots.txt is correct for production</strong></td>
+<td>Open <code>yoursite.com/robots.txt</code>. Check it does not block pages you want found, and that old platform rules (for example, WordPress admin folders) are removed or still make sense</td>
+<td>Staging often blocks everything</td>
+<td class="skip">Nothing gets crawled</td>
+</tr>
+<tr>
+<td><strong>The site address in Astro is set to the real domain</strong></td>
+<td>Check the generated sitemap and canonical tags</td>
+<td>Astro builds addresses from this setting</td>
+<td class="skip">Sitemap and canonicals use the wrong domain</td>
+</tr>
+<tr>
+<td><strong>Domain, hosting, and secure connection (https) are working</strong></td>
+<td>Open the site with and without <code>www</code>, with <code>http</code> and <code>https</code></td>
+<td>Visitors should always land on one secure version</td>
+<td class="skip">Warnings, duplicate versions, or errors</td>
+</tr>
+<tr>
+<td><strong>Redirects are live</strong></td>
+<td>Test a sample of old addresses, including the highest-traffic ones</td>
+<td>Redirects tested on staging need to work on production hosting too</td>
+<td class="skip">Old links break on day one</td>
+</tr>
+<tr>
+<td><strong>Cache is cleared</strong> (on your hosting and any content network)</td>
+<td>Check you see the new version</td>
+<td>Old versions can linger</td>
+<td class="skip">Visitors see a mix of old and new</td>
+</tr>
+<tr>
+<td><strong>Forms deliver to the real inbox or CRM</strong></td>
+<td>Submit a real test</td>
+<td>Staging forms point to test inboxes</td>
+<td class="skip">Leads go to a test inbox</td>
+</tr>
+<tr>
+<td><strong>Analytics and tags use live IDs</strong></td>
+<td>Check live reports</td>
+<td>Staging IDs can pollute your data</td>
+<td class="skip">Data is lost or mixed with test traffic</td>
+</tr>
+</tbody>
+</table></div>
+<div class="checkcard"><div class="checkhead">Checklist for this phase</div><ul>
+<li class="task"><label class="chk"><input type="checkbox"/><span>noindex removed (checked in page source)</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Password removed</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Canonicals correct</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>robots.txt correct</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Site address setting correct</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>https and www behavior correct</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Redirects live and sampled</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Cache cleared</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Forms and analytics tested on the live site</span></label></li>
+</ul></div>
+
+
+</section>
+<section class="block phase" id="phase-10-after-launch-new-sitemap-google"><header class="phead"><span class="eyebrow">Phase 10</span><h2>After launch: new sitemap, Google Search Console, Bing Webmaster Tools</h2></header>
+<p class="applies"><strong>Applies to:</strong> everyone.</p>
+<p class="rule"><strong>Quick rule:</strong> tell the search engines the new site exists, and tell them clearly.</p>
+<p>Once the site is live, do these steps the same day.</p>
+<h2>Step 1: Create a clean new sitemap</h2>
+<p>Astro can generate a sitemap with its official sitemap add-on (<code>@astrojs/sitemap</code>). Check that it only lists addresses that are:</p>
+<ul>
+<li>the <strong>final</strong> address of the page (not redirected)</li>
+<li><strong>indexable</strong> (not set to noindex)</li>
+<li><strong>working</strong> (not an error page)</li>
+<li>on the <strong>real domain</strong> (not staging)</li>
+</ul>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Why</th>
+<th>If you do not</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A sitemap is a map you hand to search engines. A clean map helps them find the right pages</td>
+<td class="skip">A messy map sends search engines to redirects, errors, and test pages, and wastes their attention on pages you do not want</td>
+</tr>
+</tbody>
+</table></div>
+<h2>Step 2: Check that robots.txt points to the sitemap</h2>
+<p>Your robots.txt file should include the full address of your sitemap. This helps search engines that find the site by other routes.</p>
+<h2>Step 3: Add and verify your site in Google Search Console</h2>
+<p>If you already have a property, check that it still verifies on the new site. If you use a different way of verifying, such as a file or a tag on the old site, it may need setting up again.</p>
+<ul>
+<li><strong>Why:</strong> you cannot submit a sitemap, inspect pages, or see errors without it.</li>
+<li><strong>If you skip it:</strong> you are blind. Problems go unseen for weeks.</li>
+</ul>
+<h2>Step 4: Submit the sitemap in Google Search Console</h2>
+<p>Open Search Console, go to Sitemaps, and submit the sitemap address.</p>
+<ul>
+<li><strong>Why:</strong> it tells Google where your pages are and speeds up discovery of the new site.</li>
+<li><strong>If you skip it:</strong> Google still finds your pages, but more slowly, and you do not get a clear report on which pages it could not read.</li>
+</ul>
+<h2>Step 5: Add and verify your site in Bing Webmaster Tools, and submit the sitemap there</h2>
+<p>Bing Webmaster Tools lets you import your site from Google Search Console, which saves time. Then submit the sitemap in the same way.</p>
+<ul>
+<li><strong>Why:</strong> Bing's index also feeds other search products, such as Microsoft Copilot, Yahoo and DuckDuckGo. It is a smaller share than Google, but it costs very little to cover.</li>
+<li><strong>If you skip it:</strong> your new pages are discovered more slowly on Bing and the products that rely on it. Bing's sitemap and crawl reports also show problems you would not see elsewhere.</li>
+<li><strong>Optional extra:</strong> Bing supports IndexNow, a simple way to tell it right away when pages change. Many website tools support it.</li>
+</ul>
+<h2>Step 6: Inspect your most important pages</h2>
+<p>In Google Search Console, use <strong>URL Inspection</strong> on your homepage and top pages. Confirm Google can reach them, that they are allowed to be indexed, and that the canonical address is the one you expect. You can request indexing for the most important ones. (There is a daily limit, so choose carefully.)</p>
+<h2>Step 7: If you changed your domain name, use the domain-move process</h2>
+<p>If your site moved to a different domain or subdomain (for example <code>example.com</code> to <code>example.net</code>, or <code>a.example.com</code> to <code>b.example.com</code>), Google Search Console has a specific "Change of Address" tool. Use it. It is not needed for platform changes, URL path changes, or an http to https or www switch on the same domain.</p>
+<div class="checkcard"><div class="checkhead">Checklist for this phase</div><ul>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Clean sitemap generated (final, indexable, working, real domain only)</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>robots.txt references the sitemap</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Google Search Console verified</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Sitemap submitted in Google Search Console</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Bing Webmaster Tools verified</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Sitemap submitted in Bing Webmaster Tools</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Top pages inspected in URL Inspection</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Change of Address used, only if the domain or subdomain changed</span></label></li>
+</ul></div>
+
+
+</section>
+<section class="block phase" id="phase-11-monitoring-after-launch"><header class="phead"><span class="eyebrow">Phase 11</span><h2>Monitoring after launch</h2></header>
+<p class="applies"><strong>Applies to:</strong> everyone.</p>
+<p class="rule"><strong>Quick rule:</strong> launching is the start of the check, not the end.</p>
+<p>Search engines need time to visit and understand the new site. Some movement in rankings and traffic is normal while this happens. What you are looking for is not "did anything move", but "are there errors we can fix".</p>
+<p><strong>Before launch, agree on your warning line.</strong> Decide what size of drop in clicks, over what time, makes the team stop and investigate. Write it down. Use your normal ups and downs, seasons and campaigns to set it. That way, nobody argues about it under stress, and normal ups and downs do not trigger panic.</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>When</th>
+<th>What to check</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>First hour and first 24 hours</strong></td>
+<td>Top pages load. Forms deliver. Old addresses redirect. Sitemap opens. robots.txt is right. No noindex on live pages. Search Console starts showing data</td>
+<td>Critical problems are cheapest to fix right now</td>
+</tr>
+<tr>
+<td><strong>First week</strong></td>
+<td>Run a full crawl of the live site and compare it to your Phase 1 data. Look for new 404s, pages missing from the sitemap, sitemap addresses that redirect or are noindex, missing schema, missing images, mobile problems, and conversion gaps. Check Search Console for errors daily</td>
+<td>Small mistakes show up here before they become ranking problems</td>
+</tr>
+<tr>
+<td><strong>First month</strong></td>
+<td>Compare clicks, impressions, ranking pages, leads, and form conversion rate against your baseline. Fix the biggest-impact issues first: a broken redirect on a page with outside links matters more than a missing alt tag on a minor page</td>
+<td>Separates real problems from normal ups and downs</td>
+</tr>
+<tr>
+<td><strong>Months 2 and 3</strong></td>
+<td>Look for pages that lost rankings and also changed meaning. Look for pages not indexed, old addresses still getting visits, and sections with fewer internal links than before</td>
+<td>Slow-moving problems appear here</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Do not roll back just because rankings moved one day.</strong> Rolling back is for broken pages, wrong noindex, failed forms and site errors. Reversing a healthy launch adds more changes and slows recovery.</p>
+<div class="checkcard"><div class="checkhead">Checklist for this phase</div><ul>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Warning line agreed before launch</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>24-hour check done</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>First-week crawl and comparison done</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>First-month comparison against baseline done</span></label></li>
+<li class="task"><label class="chk"><input type="checkbox"/><span>Months 2 to 3 review done</span></label></li>
+</ul></div>
+
+
+</section>
+<section class="block phase" id="part-12-real-problems-from-enacton-s-own"><header class="phead"><span class="eyebrow">Part 12</span><h2>Real problems from EnactOn&#x27;s own WordPress to Astro migration</h2></header>
+<p>EnactOn migrated its own WordPress website to Astro. The pages were rebuilt using migration scripts that read the live website and generated Astro pages. The result had many problems that were only found by comparing every page against the live site. These are the real ones, in plain language, with how to catch each one.</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>What went wrong</th>
+<th>What it looked like</th>
+<th>How to catch it before launch</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Wrong section type.</strong> Some sections were turned into the wrong kind of block: card sections became call-to-action sections, call-to-action sections became plain text, and some comparison tables or industry sections were mislabeled</td>
+<td>The layout did not match the live site, even though the words were there</td>
+<td>Compare the layout of every section, not just the text</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Content missing from the scrape.</strong> Pages arrived without titles, descriptions, cards, buttons, lists, tables, FAQs, or testimonials that were on the live page</td>
+<td>Thin, unfinished-looking pages</td>
+<td>Do the parity check in Phase 4 on every page</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Half-copied cards.</strong> Only the card titles were copied. Descriptions, icons, and images were missing</td>
+<td>Cards with a heading and nothing else</td>
+<td>Check every card for title, description, icon, and image</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Buttons that existed but were invisible.</strong> Some buttons were never copied. Others were copied but missing the "enabled" setting, so they did not show on the page</td>
+<td>Pages with no call to action, even though the data had one</td>
+<td>Click every button on the new page. Never assume that "it is in the files" means "it is on screen"</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Broken comparison and pricing tables.</strong> Missing headers, missing descriptions, missing buttons, or missing rows</td>
+<td>Tables that looked complete but were not</td>
+<td>Compare every table cell by cell against the live page</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>Wrong or missing images.</strong> Some sections showed the wrong picture, no picture, or an empty box</td>
+<td>Visible, embarrassing gaps</td>
+<td>Check every image is in the right section and has alt text</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>Whole sections not detected.</strong> Comparison matrices, process steps, timelines, and call-to-action blocks were missed by the scripts</td>
+<td>Whole sections absent from the new page</td>
+<td>Count the sections on the old page and the new page. The numbers must match</td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong>Content grouped wrongly.</strong> Content that belonged together, such as the benefits under a pricing or hiring model, was split into different sections</td>
+<td>Page layout differed from the live site</td>
+<td>Check that grouped content stays grouped</td>
+</tr>
+<tr>
+<td>9</td>
+<td><strong>Duplicate content.</strong> Some sections were extracted more than once, or reused in different blocks</td>
+<td>The same text appeared twice on one page</td>
+<td>Search the page for repeated paragraphs. Ask an AI agent to flag repeated text</td>
+</tr>
+<tr>
+<td>10</td>
+<td><strong>Templates did not cover all page types.</strong> The first version did not handle every HTML variation across Solutions, Services, Team Extension, Industries, and Case Studies pages</td>
+<td>Pages of some types came out wrong</td>
+<td>Group pages by type and test the template on several pages of each type</td>
+</tr>
+<tr>
+<td>11</td>
+<td><strong>Missing pages.</strong> Some pages on the live site were not in the Astro project at all</td>
+<td>A live page returned an error after launch</td>
+<td>Compare your project's page list against the live sitemap</td>
+</tr>
+<tr>
+<td>12</td>
+<td><strong>Pages of the same type were built differently.</strong> Slight differences in structure meant the scraper had to be updated to handle many layouts without being hard-coded for each one</td>
+<td>A fix for one page broke another</td>
+<td>Test each fix on pages of the same type, not only the one you fixed</td>
+</tr>
+<tr>
+<td>13</td>
+<td><strong>Repeated checking was needed.</strong> After each template update, every generated page was reviewed against the live site to make sure nothing had slipped backwards</td>
+<td>Time spent re-reviewing, but no regressions went live</td>
+<td>Plan time for rechecking after every template change</td>
+</tr>
+<tr>
+<td>14</td>
+<td><strong>The goal: complete content parity.</strong> No title, description, button, card, image, table, call to action, or FAQ left behind, while keeping the content compatible with the existing Astro components</td>
+<td>A clear target everyone could check against</td>
+<td>Write "parity" as the definition of done</td>
+</tr>
+</tbody>
+</table></div>
+
+</section>
+<section class="block phase" id="part-13-frequently-asked-questions"><header class="phead"><span class="eyebrow">Part 13</span><h2>Frequently asked questions</h2></header>
+<p><strong>Will my rankings drop after moving to Astro?</strong>
+Some movement is normal while search engines revisit your pages. Keeping the same URLs, content, titles, and links removes most avoidable risk. Nobody can promise unchanged rankings. If you see errors (404s, wrong canonicals, noindex), fix those first.</p>
+<p><strong>Should I redesign and migrate at the same time?</strong>
+If you can, no. Moving platforms first and changing the design later makes any problem easier to trace. If you must do both, keep a written list of every change.</p>
+
+</section>
+<section class="block phase" id="last-note-about-this-playbook"><header class="phead"><span class="eyebrow">Last note</span><h2>About this playbook</h2></header>
+<p>This playbook was written by EnactOn Technologies, a custom software development company founded in 2013. EnactOn migrated its own website from WordPress to Astro, and the problems in section 12 come from that project.</p></section>
+  </main>
+</div>
+
+<footer class="foot">Your ticks are saved in this browser only. They are not shared with anyone else.</footer>
+
+<script>
+(function () {
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('.chk input'));
+  var KEY = 'enacton-astro-playbook-v1';
+  var saved = {};
+  try { saved = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { saved = {}; }
+  function paint() {
+    var n = boxes.filter(function (b) { return b.checked; }).length;
+    document.getElementById('count').textContent = n + ' of ' + boxes.length + ' checked';
+    document.getElementById('fill').style.width = (boxes.length ? n / boxes.length * 100 : 0) + '%';
+  }
+  function save() {
+    var o = {};
+    boxes.forEach(function (b, i) { if (b.checked) o[i] = 1; });
+    try { localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) {}
+  }
+  boxes.forEach(function (b, i) { b.checked = !!saved[i]; b.addEventListener('change', function () { save(); paint(); }); });
+  document.getElementById('reset').addEventListener('click', function () {
+    boxes.forEach(function (b) { b.checked = false; });
+    save(); paint();
+  });
+  paint();
+
+  var links = Array.prototype.slice.call(document.querySelectorAll('#index a'));
+  var secs = links.map(function (a) { return document.getElementById(a.getAttribute('href').slice(1)); });
+  function spy() {
+    var y = window.scrollY + 120, cur = 0;
+    secs.forEach(function (s, i) { if (s && s.offsetTop <= y) cur = i; });
+    links.forEach(function (a, i) { a.classList.toggle('on', i === cur); });
+  }
+  window.addEventListener('scroll', spy, { passive: true });
+  spy();
+})();
+</script>
+
+</body></html>
